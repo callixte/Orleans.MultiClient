@@ -5,6 +5,9 @@ using Orleans.Hosting;
 using System;
 using System.Net;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Orleans.Grains2;
 
 namespace Orleans.Host
 {
@@ -41,12 +44,37 @@ namespace Orleans.Host
                 .UseLocalhostClustering()
                 .Configure<ClusterOptions>(options =>
                 {
-                    options.ClusterId = "A";
-                    options.ServiceId = "AApp";
+                    options.ServiceId = "A";
+                    options.ClusterId = "AApp";
                 })
                 .Configure<EndpointOptions>(options => options.AdvertisedIPAddress = IPAddress.Loopback)
-                .ConfigureApplicationParts(parts => parts.AddApplicationPart(typeof(HelloGrain).Assembly).WithReferences())
-                .ConfigureLogging(logging => logging.AddConsole());
+                .ConfigureApplicationParts(parts =>
+                    parts.AddApplicationPart(typeof(HelloGrain).Assembly).WithReferences())
+                .ConfigureLogging(logging => logging.AddConsole())
+                .AddOrleansMultiClient("A", "AApp", build =>
+                {
+                    build.AddClient(opt =>
+                    {
+                        opt.ServiceId = "A";
+                        opt.ClusterId = "AApp";
+                        opt.SetServiceAssembly(typeof(IHelloA).Assembly);
+                        opt.Configure = (b =>
+                        {
+                            b.UseLocalhostClustering();
+                        });
+                    });
+                    build.AddClient(opt =>
+                    {
+                        opt.ServiceId = "B";
+                        opt.ClusterId = "BApp";
+                        opt.SetServiceAssembly(typeof(IHelloB).Assembly);
+                        opt.Configure = (b =>
+                        {
+                            b.UseLocalhostClustering(gatewayPort: 30001);
+                            b.AddSimpleMessageStreamProvider("SMS");
+                        });
+                    });
+                });
 
             var host = builder.Build();
             await host.StartAsync();

@@ -2,6 +2,8 @@
 {
     public  interface IClusterClientBuilder
     {
-        IClusterClient Build();
+        bool IsLocal { get; }
+        IGrainFactory Build();
+        IClusterClient BuildAsClient();
     }
 }

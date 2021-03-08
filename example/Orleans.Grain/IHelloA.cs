@@ -11,5 +11,6 @@ namespace Orleans.Grains
     public interface IHelloA : Orleans.IGrainWithIntegerKey
     {
         Task<string> SayHello(string greeting);
+        Task<string> TalkToMyself(string greeting);
     }
 }

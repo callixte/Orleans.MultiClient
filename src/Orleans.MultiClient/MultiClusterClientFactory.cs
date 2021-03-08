@@ -29,14 +29,22 @@ namespace Orleans.MultiClient
             var name = assembly.FullName;
             return clusterClientCache.GetOrAdd(name, (key) =>
             {
-                IClusterClient client = this._serviceProvider.GetRequiredServiceByName<IClusterClientBuilder>(key).Build();
-                if (client.IsInitialized)
+                var builder = this._serviceProvider.GetRequiredServiceByName<IClusterClientBuilder>(key);
+                if (builder.IsLocal)
                 {
-                    return client;
+                    return builder.Build();
                 }
                 else
                 {
-                    throw new Exception("Can not initialized clusterClient");
+                    IClusterClient client = builder.BuildAsClient();
+                    if (client.IsInitialized)
+                    {
+                        return client;
+                    }
+                    else
+                    {
+                        throw new Exception("Can not initialized clusterClient");
+                    }
                 }
             });
         }

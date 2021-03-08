@@ -7,12 +7,18 @@ namespace Orleans.MultiClient.DependencyInjection
 {
     public class MultiClientBuilder : IMultiClientBuilder
     {
-        public IServiceCollection Services { get; private set; }
+        public string LocalServiceId { get;  }
+        
+        public string LocalClusterId { get; }
+        
+        public IServiceCollection Services { get; }
         public Action<IClientBuilder> OrleansConfigure { get; set; }
         public IList<OrleansClientOptions> ClientOptions { get; set; } = new List<OrleansClientOptions>();
-        public MultiClientBuilder(IServiceCollection services)
+        public MultiClientBuilder(string serviceId, string clusterId, IServiceCollection services)
         {
-            this.Services = services;
+            LocalServiceId = serviceId;
+            LocalClusterId = clusterId;
+            Services = services;
         }
         public void Build()
         {
@@ -31,10 +37,8 @@ namespace Orleans.MultiClient.DependencyInjection
                     //if (!client.ExistAssembly(serviceName))
                     //    throw new ArgumentNullException($"{serviceName} service does not exist in the assembly");
 
-                    Services.AddSingletonNamedService<IClusterClientBuilder>(serviceName, (sp, key) =>
-                    {
-                        return new ClusterClientBuilder(sp, client, key);
-                    });
+                    Services.AddSingletonNamedService<IClusterClientBuilder>(serviceName, (sp, key) 
+                        => new ClusterClientBuilder(sp, client, key, client.ServiceId == LocalServiceId && client.ClusterId == LocalClusterId));
                 }
             }
 

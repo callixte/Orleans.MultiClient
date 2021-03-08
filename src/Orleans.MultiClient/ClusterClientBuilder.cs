@@ -10,33 +10,52 @@ namespace Orleans.MultiClient
     public class ClusterClientBuilder : IClusterClientBuilder
     {
         private readonly OrleansClientOptions _options;
+        private readonly IServiceProvider _services;
         private readonly ILogger _logger;
         private readonly string _serviceName;
+        
+        public bool IsLocal { get; }
 
-        public ClusterClientBuilder(IServiceProvider serviceProvider, OrleansClientOptions options,string serviceName)
+        public ClusterClientBuilder(IServiceProvider serviceProvider, OrleansClientOptions options, string serviceName, bool isLocal)
         {
             this._logger = serviceProvider.GetRequiredService<ILogger<ClusterClientBuilder>>();
+            this._services = serviceProvider;
             this._options = options;
             this._serviceName = serviceName;
+            this.IsLocal = isLocal;
         }
-        public IClusterClient Build()
+        public IGrainFactory Build()
         {
-            IClientBuilder build = new ClientBuilder();
-            if (_options.Configure == null)
+            if (IsLocal)
             {
-                _logger.LogError($"{_serviceName} There is no way to connect to Orleans, please configure it in OrleansClientOptions.Configure");
+                return _services.GetService<IGrainFactory>();
             }
-            _options.Configure(build);
-            build.Configure<ClusterOptions>(opt =>
+            else
             {
-                if (!string.IsNullOrEmpty(_options.ClusterId))
-                    opt.ClusterId = _options.ClusterId;
-                if (!string.IsNullOrEmpty(_options.ServiceId))
-                    opt.ServiceId = _options.ServiceId;
-            });
+                IClientBuilder build = new ClientBuilder();
+                if (_options.Configure == null)
+                {
+                    _logger.LogError(
+                        $"{_serviceName} There is no way to connect to Orleans, please configure it in OrleansClientOptions.Configure");
+                }
 
-            var client = build.Build();
-            return this.ConnectClient(_serviceName, client);
+                _options.Configure(build);
+                build.Configure<ClusterOptions>(opt =>
+                {
+                    if (!string.IsNullOrEmpty(_options.ClusterId))
+                        opt.ClusterId = _options.ClusterId;
+                    if (!string.IsNullOrEmpty(_options.ServiceId))
+                        opt.ServiceId = _options.ServiceId;
+                });
+
+                var client = build.Build();
+                return this.ConnectClient(_serviceName, client);
+            }
+        }
+
+        public IClusterClient BuildAsClient()
+        {
+            return Build() as IClusterClient;
         }
 
         private IClusterClient ConnectClient(string serviceName, IClusterClient client)

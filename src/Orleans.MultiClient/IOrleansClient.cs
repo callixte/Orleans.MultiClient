@@ -19,6 +19,13 @@ namespace Orleans
         /// <returns></returns>
         IStreamProvider GetStreamProvider(Assembly assembly, string name);
         /// <summary>
+        /// get stream provider <see cref="IStreamProvider"/>
+        /// </summary>
+        /// <param name="TGrainProducer">type of the producer for the stream</param>
+        /// <param name="name">stream provider name</param>
+        /// <returns></returns>
+        IStreamProvider GetStreamProvider<TGrainProducer>(string name);
+        /// <summary>
         /// get <see cref="ClusterClient"/>
         /// </summary>
         /// <param name="assembly">Assembly of silo interface</param>

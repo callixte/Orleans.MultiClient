@@ -3,18 +3,20 @@ using Orleans.Grains;
 using Orleans.Grains2;
 using Orleans.Hosting;
 using System;
+using System.Threading.Tasks;
+using Orleans.Streams;
 
 namespace Orleans.Example
 {
     class Program
     {
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             Console.WriteLine("Enter btn start");
             Console.ReadKey();
             IServiceCollection services = new ServiceCollection();
             services.AddLogging();
-            services.AddOrleansMultiClient(build =>
+            services.AddOrleansMultiClient("", "", build =>
             {
                 build.AddClient(opt =>
                 {
@@ -34,11 +36,16 @@ namespace Orleans.Example
                     opt.Configure = (b =>
                     {
                         b.UseLocalhostClustering(gatewayPort: 30001);
+                        b.AddSimpleMessageStreamProvider("SMS");
                     });
                 });
             });
 
             var sp = services.BuildServiceProvider();
+            
+            var streamprovider = sp.GetRequiredService<IOrleansClient>().GetStreamProvider<IHelloB>("SMS");
+            var stream = streamprovider.GetStream<string>(Guid.Parse("a9b9234e-ef9e-4d88-9934-580d82ad2f1c"), "MyStream");
+            await stream.SubscribeAsync<string>(async (data, token) => Console.WriteLine($"From stream: {data}"));
 
             var service = sp.GetRequiredService<IOrleansClient>().GetGrain<IHelloA>(1);
             var result1 = service.SayHello("Hello World Success Grain1").GetAwaiter().GetResult();

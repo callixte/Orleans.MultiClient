@@ -22,10 +22,34 @@ namespace Orleans.MultiClient
         {
             _clusterClientFactory.Create(assembly).BindGrainReference(grain);
         }
+        
+        /// <inheritdoc />
         public IStreamProvider GetStreamProvider(Assembly assembly, string name)
         {
-            return this.GetClusterClient(assembly).GetStreamProvider(name);
+            var grainFactory = _clusterClientFactory.Create(assembly);
+            if (grainFactory is IClusterClient)
+            {
+                return ((IClusterClient) _clusterClientFactory.Create(assembly)).GetStreamProvider(name);
+            }
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentNullException(nameof(name));
+
+            var provider = _serviceProvider.GetRequiredServiceByName<IStreamProvider>(name);
+            
+            if (provider is null)
+            {
+                throw new InvalidOperationException("GetStreamProvider was called outside of the Orleans silo.");
+            }
+
+            return provider;
         }
+
+        /// <inheritdoc />
+        public IStreamProvider GetStreamProvider<TGrainProducer>(string name)
+        {
+            return GetStreamProvider(typeof(TGrainProducer).Assembly, name);
+        }
+
         public IClusterClient GetClusterClient(Assembly assembly)
         {
             return (IClusterClient)_clusterClientFactory.Create(assembly);
